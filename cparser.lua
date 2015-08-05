@@ -17,6 +17,7 @@ local coroutine = require 'coroutine'
 local table = require 'table'
 local io = require 'io'
 
+
 -- Lua 5.1 to 5.3 compatibility
 local unpack = unpack or table.unpack
 
@@ -96,34 +97,42 @@ local function newTag(tag)
    -- the printing function
    local function tostr(self)
       local function str(x)
-	 if type(x)=='string' then
-	    return string.format("%q",x):gsub("\\\n","\\n")
-	 elseif type(x)=='table' and not getmetatable(x) then
-	    return "{..}"
-	 else
-	    return tostring(x)
-	 end
+          if type(x)=='string' then
+             return string.format("%q",x):gsub("\\\n","\\n")
+          elseif type(x)=='table' and not getmetatable(x) then
+             return "[]"
+          elseif type(x)=='table' then
+             return tostring(x)
+          else
+             --return tostring(x)
+             return ""
+          end
       end
-      local p = string.format("%s{", self.tag or "Node")
+      local p = string.format("{\"%s\":{", self.tag or "Node")
       local s = {}
       local seqlen = 0
       for i=1,#self do
-	 if self[i] then seqlen=i else break end end
-      for i=1,seqlen do
-	 s[1+#s] = str(self[i]) end
-      for k,v in pairs(self) do
-	 if type(k) == 'number' then
-	    if k<1 or k>seqlen then
-	       s[1+#s] = string.format("[%s]=%s",k,str(v)) end
-	 elseif type(k) ~= 'string' then
-	    s.extra = true
-	 elseif k:find("^_") and type(v)=='table' then
-	    s[1+#s] = string.format("%s={..}",k) -- hidden
-	 elseif k ~= 'tag' then
-	    s[1+#s] = string.format("%s=%s",k,str(v)) end
+         if self[i] then
+            seqlen=i
+         else
+            break
+         end
       end
-      if s.extra then s[1+#s] = "..." end
-      return p .. table.concat(s,',') .. '}'
+      for k,v in pairs(self) do
+         if type(k) == 'number' then
+            s[1+#s] = string.format("\"%s\":%s", k, str(v))
+         elseif type(k) ~= 'string' then
+            s.extra = true
+         elseif k:find("^_") and type(v)=='table' then
+            s[1+#s] = string.format("\"%s\":[]",k) -- hidden
+         elseif k ~= 'tag' then
+            s[1+#s] = string.format("\"%s\":%s", k, str(v))
+         end
+      end
+      if s.extra then
+         s[1+#s] = ""
+      end
+      return p .. table.concat(s,', ') .. "}}"
    end
    -- the constructor
    return function(t) -- must be followed by a table constructor
@@ -134,6 +143,7 @@ local function newTag(tag)
       return t
    end
 end
+
 
 -- hack to print any table: print(Node(nn))
 local Node = newTag(nil)   -- luacheck: ignore 211
