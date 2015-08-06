@@ -16,7 +16,7 @@ local string = require 'string'
 local coroutine = require 'coroutine'
 local table = require 'table'
 local io = require 'io'
-local json = require('cjson')
+local json = require('json')
 
 -- Lua 5.1 to 5.3 compatibility
 local unpack = unpack or table.unpack
@@ -96,105 +96,7 @@ knownIncludeQuirks["<iso646.h>"] = { -- c++
 local function newTag(tag)
    -- the printing function
    local function tostr(self)
-      local function str(x)
-          if type(x)=='string' then
-             return string.format("%q",x):gsub("\\\n","\\n")
-          elseif type(x) == 'table' and x.tag == 'Pair' and
-                 type(x[1]) == 'table' and
-                 (x[1].tag == 'Type' or x[1].tag == 'Pointer') then
-             local s = {}
-             if #x == 2 then
-               return tostring(x[0])
-             end
-             for k,v in pairs(x) do
-               if k == "tag" then
-               elseif type(k) == 'number' then
-                 s[1+#s] = str(v)
-               else
-                 s[1+#s] = string.format("\"%s\":%s", k, tostring(v))
-               end
-             end
-             if #x == 1 then
-               return s[1]
-             else
-               return "{" .. table.concat(s,', ') .. "}"
-             end
-          elseif type(x)=='table' and not getmetatable(x) then
-             return "[]"
-          elseif type(x)=='table' then
-             return tostring(x)
-          elseif type(x) == 'number' then
-             return string.format("%s", x)
-          elseif type(x) == 'boolean' then
-             return string.format("%s", x)
-          else
-             return type(x)
-          end
-      end
-      local p = ""
-      local s = {}
-      local prefix = false
-      local seqlen = 0
-      if self.tag == "Enum" then
-        local enum = 0
-        for k,v in pairs(self) do
-          if v[2] ~= nil then
-            enum = v[2]
-          else
-            enum = enum + 1
-          end
-
-          s[1+#s] = string.format("\"%s\": %s", v[1], enum)
-        end
-        p = "{\"Enum\":{" .. table.concat(s, ",") .. "}}"
-        return p
-      end
-      if self.tag == "Pair" and #self == 3 then
-        return string.format("%s: %s", str(self[2]), tostring(self[1]))
-      end
-      if self.tag == "Type" and #self == 2 then
-        return string.format("\"result\": %s", str(self))
-      elseif self.tag == "Pair" and
-        type(self[1]) == 'table' and
-        (self[1].tag == 'Type' or
-         self[1].tag == 'Pointer') then
-          p = tostring(self[#self])
-          prefix = true
-      else
-        p = string.format("{\"%s\":", self.tag or "Node") .. "{"
-      end
-      for k,v in pairs(self) do
-         if type(k) == 'number' and type(v) == 'number' then
-            s[1+#s] = string.format("%s", v)
-         elseif v == nil then
-            s[1+#s] = string.format("\"%s\":%s", k, k)
-         elseif type(k) == 'number' and type(v) == 'table' and v.tag == "Pair" then
-            local key = str(v[#v]);
-            local rest = v;
-            table.remove(rest, #rest);
-            s[1+#s] = string.format("%s: %s", key, str(rest))
-         elseif type(k) == 'number' and type(v) == 'table' then
-            s[1+#s] = string.format("\"%s\":%s", k, str(v))
-         elseif type(k) == 'number' and type(v) ~= 'table' then
-            s[1+#s] = str(v)
-         elseif k:find("^_") and type(v)=='table' then
-           -- nothing
-         elseif k ~= 'tag' then
-            s[1+#s] = string.format("\"%s\":%s", k, str(v))
-         end
-      end
-      if prefix and #s == 2 then
-         table.remove(s, #s)
-         p = string.format("\"%s\": %s", p, table.concat(s,', '))
-         s = {}
-      else
-       p = p .. table.concat(s,', ')
-      end
-      if self.tag ~= "Pair" then
-        p = p .. "}"
-        p = p .. "}"
-      end
-      return p
+     return json.encode(self)
    end
    -- the constructor
    return function(t) -- must be followed by a table constructor
