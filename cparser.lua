@@ -111,8 +111,11 @@ local function newTag(tag)
              return "[]"
           elseif type(x)=='table' then
              return tostring(x)
+          elseif type(x) == 'number' then
+             return string.format("%s", x)
+          elseif type(x) == 'boolean' then
+             return string.format("%s", x)
           else
-             --return tostring(x)
              return ""
           end
       end
@@ -120,9 +123,25 @@ local function newTag(tag)
       local s = {}
       local prefix = false
       local seqlen = 0
+      if self.tag == "Enum" then
+        local enum = 0
+        for k,v in pairs(self) do
+          if v[2] ~= nil then
+            enum = v[2]
+          else
+            enum = enum + 1
+          end
+
+          s[1+#s] = string.format("\"%s\": %s", v[1], enum)
+        end
+        p = "{\"Enum\":{" .. table.concat(s, ",") .. "}}"
+        --p = string.format("XXX%s", self[1])
+        return p
+      end
       if self.tag == "Pair" and
         type(self[1]) == 'table' and
-        (self[1].tag == 'Type' or self[1].tag == 'Pointer') then
+        (self[1].tag == 'Type' or
+         self[1].tag == 'Pointer') then
           p = str(self[#self]) .. ":"
           prefix = true
       else
@@ -136,12 +155,14 @@ local function newTag(tag)
          end
       end
       for k,v in pairs(self) do
-         if type(k) == 'number' and type(v) == 'table' then
+         if type(k) == 'number' and type(v) == 'number' then
+            s[1+#s] = string.format("%s", v)
+         elseif v == nil then
+            s[1+#s] = string.format("\"%s\":%s", k, k)
+         elseif type(k) == 'number' and type(v) == 'table' then
             s[1+#s] = tostring(v)
          elseif type(k) == 'number' and type(v) ~= 'table' then
             s[1+#s] = str(v)
-         elseif k:find("^_") and type(v)=='table' then
-            --s[1+#s] = string.format("\"%s\":[]",k) -- hidden
          elseif k ~= 'tag' then
             s[1+#s] = string.format("\"%s\":%s", k, str(v))
          end
