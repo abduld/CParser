@@ -16,7 +16,7 @@ local string = require 'string'
 local coroutine = require 'coroutine'
 local table = require 'table'
 local io = require 'io'
-
+local json = require('cjson')
 
 -- Lua 5.1 to 5.3 compatibility
 local unpack = unpack or table.unpack
@@ -103,10 +103,22 @@ local function newTag(tag)
                  type(x[1]) == 'table' and
                  (x[1].tag == 'Type' or x[1].tag == 'Pointer') then
              local s = {}
-             for k,v in pairs(x) do
-               s[1+#s] = string.format("\"%s\":%s", k, str(v))
+             if #x == 2 then
+               return tostring(x[0])
              end
-             return "{" .. table.concat(s,', ') .. "}"
+             for k,v in pairs(x) do
+               if k == "tag" then
+               elseif type(k) == 'number' then
+                 s[1+#s] = str(v)
+               else
+                 s[1+#s] = string.format("\"%s\":%s", k, tostring(v))
+               end
+             end
+             if #x == 1 then
+               return s[1]
+             else
+               return "{" .. table.concat(s,', ') .. "}"
+             end
           elseif type(x)=='table' and not getmetatable(x) then
              return "[]"
           elseif type(x)=='table' then
@@ -116,7 +128,7 @@ local function newTag(tag)
           elseif type(x) == 'boolean' then
              return string.format("%s", x)
           else
-             return ""
+             return type(x)
           end
       end
       local p = ""
@@ -135,42 +147,49 @@ local function newTag(tag)
           s[1+#s] = string.format("\"%s\": %s", v[1], enum)
         end
         p = "{\"Enum\":{" .. table.concat(s, ",") .. "}}"
-        --p = string.format("XXX%s", self[1])
         return p
       end
-      if self.tag == "Pair" and
+      if self.tag == "Pair" and #self == 3 then
+        return string.format("%s: %s", str(self[2]), tostring(self[1]))
+      end
+      if self.tag == "Type" and #self == 2 then
+        return string.format("\"result\": %s", str(self))
+      elseif self.tag == "Pair" and
         type(self[1]) == 'table' and
         (self[1].tag == 'Type' or
          self[1].tag == 'Pointer') then
-          p = str(self[#self]) .. ":"
+          p = tostring(self[#self])
           prefix = true
       else
         p = string.format("{\"%s\":", self.tag or "Node") .. "{"
-      end
-      for i=1,#self do
-         if self[i] then
-            seqlen=i
-         else
-            break
-         end
       end
       for k,v in pairs(self) do
          if type(k) == 'number' and type(v) == 'number' then
             s[1+#s] = string.format("%s", v)
          elseif v == nil then
             s[1+#s] = string.format("\"%s\":%s", k, k)
+         elseif type(k) == 'number' and type(v) == 'table' and v.tag == "Pair" then
+            local key = str(v[#v]);
+            local rest = v;
+            table.remove(rest, #rest);
+            s[1+#s] = string.format("%s: %s", key, str(rest))
          elseif type(k) == 'number' and type(v) == 'table' then
-            s[1+#s] = tostring(v)
+            s[1+#s] = string.format("\"%s\":%s", k, str(v))
          elseif type(k) == 'number' and type(v) ~= 'table' then
             s[1+#s] = str(v)
+         elseif k:find("^_") and type(v)=='table' then
+           -- nothing
          elseif k ~= 'tag' then
             s[1+#s] = string.format("\"%s\":%s", k, str(v))
          end
       end
-      if prefix then
+      if prefix and #s == 2 then
          table.remove(s, #s)
+         p = string.format("\"%s\": %s", p, table.concat(s,', '))
+         s = {}
+      else
+       p = p .. table.concat(s,', ')
       end
-      p = p .. table.concat(s,', ')
       if self.tag ~= "Pair" then
         p = p .. "}"
         p = p .. "}"
