@@ -16,7 +16,7 @@ local string = require 'string'
 local coroutine = require 'coroutine'
 local table = require 'table'
 local io = require 'io'
-local json = require('json')
+local json = require('dkjson')
 
 -- Lua 5.1 to 5.3 compatibility
 local unpack = unpack or table.unpack
@@ -96,7 +96,11 @@ knownIncludeQuirks["<iso646.h>"] = { -- c++
 local function newTag(tag)
    -- the printing function
    local function tostr(self)
-     return json.encode(self)
+     if type(self) == 'table' and not getmetatable(self) then
+      return ''
+    else
+      return json.encode(self)
+    end
    end
    -- the constructor
    return function(t) -- must be followed by a table constructor
@@ -2794,6 +2798,13 @@ local function declarationIterator(options, lines, prefix)
    return di, symbols, macros
 end
 
+local function notsystem(s)
+if type(s.where) == 'string' then
+  return string.find(s.where, '/usr/local') == nil
+else
+  return true
+end
+end
 
 local function parse(filename, outputfile, options)
    -- handle optional arguments
@@ -2819,8 +2830,10 @@ local function parse(filename, outputfile, options)
    for action in li do
       local s = declToString(action)
       if s then
+        if action.tag ~= 'CppEvent' and notsystem(action) then
         s = s:gsub("\"","\\\"")
         res[1+#res] = string.format("\"%s\":%s", s, tostring(action))
+      end
       end
    end
    outputfile:write(table.concat(res, ",\n"))

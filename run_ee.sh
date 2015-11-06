@@ -1,0 +1,1 @@
+./lcdecl -Zpass -D__has_builtin\(x\)=1 -D__has_feature\(x\)=1  -D__x86_64__=1  -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS  -std=c11 ~/Code/llvm/include/llvm-c/ExecutionEngine.h -o ExecutionEngine.json
