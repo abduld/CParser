@@ -2,7 +2,7 @@
 
 This pure Lua module implements (1) a standard compliant C
 preprocessor with a couple useful extensions, and (2) a parser that
-provides a Lua friendly description of all declarations and
+provides a Lua friendly description of all global declarations and
 definitions in a C header or C program file.
 
 The driver program `lcpp` invokes the preprocessor and outputs
@@ -272,7 +272,14 @@ options `-Zpass` and `-std=`*dialect*.
    Unlike `lcpp`, program `lcdecl` processes the input file
    with option `-Zpass` off by default. Turning it on will
    just eliminate potentially useful warning messages.
-   
+
+- `-Ztag`
+   This option causes `lcdecl` to treat all structs, unions, and enums
+   as tagged types, possibly using synthetic tags of the form
+   `__anon_XXXXX`. It is assumed that such names are not used anywhere
+   in the parsed program. This is useful for certain code
+   transformation applications.
+
 - `-std=(c|gnu)(89|99|11)`  
    The dialect selection options also control whether the parser
    recognizes keywords introduced by later version of the C standard
@@ -485,7 +492,9 @@ The following tags are used to represent types.
 
 * `Qualified{t=basetype,...}` is used to represent a qualified variant
   of `basetype`. Fields named `const`, `volatile`, or `restrict` are
-  set to true to represent the applicable type qualifiers.
+  set to true to represent the applicable type qualifiers. When the
+  type appears in function parameters and the base type is a pointer,
+  a field named `static` may contain the guaranteed array size.
 
 * `Pointer{t=basetype}` is used to represent a pointer to an object of
   type `basetype`. This construct may also contains a field
